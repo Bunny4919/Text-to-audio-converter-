@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text-to-Audio Converter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #a18cd1, #fbc2eb);
+      color: #333;
+    }
+    header {
+      background: rgba(255, 255, 255, 0.8);
+      padding: 20px;
+      border-bottom: 2px solid #ddd;
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin: 0;
+      color: #555;
+    }
+    #controls {
+      margin: 30px auto;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 15px;
+      display: inline-block;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+      max-width: 700px;
+    }
+    textarea, select, button, input[type="range"] {
+      font-family: inherit;
+      margin: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      box-sizing: border-box;
+    }
+    textarea {
+      width: 95%;
+      height: 120px;
+      resize: vertical;
+    }
+    button {
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      font-weight: bold;
+      padding: 10px 20px;
+      border: none;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #loadingIndicator {
+      display: none;
+      margin-top: 15px;
+      color: #007bff;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Text-to-Audio Converter</h1>
+  </header>
+
+  <div id="controls">
+    <textarea id="textInput" placeholder="Enter your text here"></textarea><br>
+    <select id="languageSelect">
+      <option value="auto">Auto-Detect</option>
+      <option value="en">English</option>
+      <option value="hi">Hindi</option>
+      <option value="te">Telugu</option>
+      <option value="ta">Tamil</option>
+    </select>
+    <br />
+    <label for="volumeControl">Volume:</label>
+    <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="0.8">
+    <span id="volumeValue">0.8</span>
+    <br />
+    <label for="speedControl">Speed:</label>
+    <input type="range" id="speedControl" min="0.5" max="2" step="0.1" value="1">
+    <span id="speedValue">1x</span>
+    <br />
+    <button id="generateBtn">Generate Audio</button>
+    <button id="resetBtn">Reset</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="resumeBtn">Resume</button>
+    <button id="stopBtn">Stop</button>
+    <p id="loadingIndicator">Generating Audio...</p>
+  </div>
+
+  <script>
+    let synth = window.speechSynthesis;
+    let voices = [];
+    let speechRate = 1;
+    let volumeLevel = 0.8;
+    let currentUtterance = null;
+
+    function populateVoiceList() {
+      voices = synth.getVoices();
+    }
+    populateVoiceList();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = populateVoiceList;
+    }
+
+    document.getElementById("speedControl").addEventListener("input", (event) => {
+      speechRate = parseFloat(event.target.value);
+      document.getElementById("speedValue").textContent = `${speechRate}x`;
+    });
+
+    document.getElementById("volumeControl").addEventListener("input", (event) => {
+      volumeLevel = parseFloat(event.target.value);
+      document.getElementById("volumeValue").textContent = `${volumeLevel}`;
+    });
+
+    function speakText(text, language) {
+      if (!text.trim()) {
+        alert("Please enter some text.");
+        return;
+      }
+
+      if (!window.speechSynthesis) {
+        alert("Speech Synthesis is not supported in this browser.");
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      const selectedVoice = voices.find((v) => v.lang.includes(language)) || voices.find((v) => v.lang.includes("en"));
+      if (selectedVoice) utterance.voice = selectedVoice;
+      utterance.lang = language;
+      utterance.rate = speechRate;
+      utterance.volume = volumeLevel;
+      currentUtterance = utterance;
+
+      utterance.onstart = () => {
+        document.getElementById("loadingIndicator").style.display = "block";
+        document.getElementById("generateBtn").disabled = true;
+      };
+
+      utterance.onend = () => {
+        document.getElementById("loadingIndicator").style.display = "none";
+        document.getElementById("generateBtn").disabled = false;
+      };
+
+      synth.speak(utterance);
+    }
+
+    document.getElementById("generateBtn").addEventListener("click", () => {
+      let inputText = document.getElementById("textInput").value.trim();
+      let language = document.getElementById("languageSelect").value;
+      speakText(inputText, language);
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      document.getElementById("textInput").value = "";
+      document.getElementById("languageSelect").value = "auto";
+      document.getElementById("volumeControl").value = 0.8;
+      document.getElementById("speedControl").value = 1;
+      synth.cancel();
+      currentUtterance = null;
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", () => {
+      if (synth.speaking && !synth.paused) synth.pause();
+    });
+
+    document.getElementById("resumeBtn").addEventListener("click", () => {
+      if (synth.paused) synth.resume();
+    });
+
+    document.getElementById("stopBtn").addEventListener("click", () => {
+      if (synth.speaking) synth.cancel();
+    });
+  </script>
+</body>
+</html>
